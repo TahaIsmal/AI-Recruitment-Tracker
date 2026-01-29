@@ -32,7 +32,7 @@ The workflow follows a 4-stage pipeline:
 
 | 📂 Drive Trigger | 📊 Notion Database | 📧 Gmail Automation |
 | :---: | :---: | :---: |
-| ![Drive](screenshots/Drive.png) | ![Notion](screenshots/Notion.png) | ![Gmail](screenshots/Gmail.png) |
+| ![Drive](screenshots/Drive.png) | ![Notion](screenshots/Notion.png) | ![Gmail](screenshots/gmail.png) |
 | *Detecting CVs* | *Scoring & Tracking* | *Personalized Response* |
 
 ---
