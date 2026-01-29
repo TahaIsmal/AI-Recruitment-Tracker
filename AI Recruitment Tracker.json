@@ -1,0 +1,448 @@
+{
+  "name": "AI Recruitment Tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1UHFLAYcT2dYef0RxID-7z1AwB5YoALwG",
+          "mode": "list",
+          "cachedResultName": "Applicants CVs",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1UHFLAYcT2dYef0RxID-7z1AwB5YoALwG"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        0
+      ],
+      "id": "d228ba1c-e3cd-4d65-b868-159c0d4a3457",
+      "name": "Google Drive Trigger",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "qfEmOboilpdBnRMH",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        128,
+        0
+      ],
+      "id": "f75e1cd4-d857-4fc2-853c-38aaca7b4d49",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1CBQfOin88OHmpzYOklKLaRhQm-rfGkaA",
+          "mode": "list",
+          "cachedResultName": "cv final.pdf",
+          "cachedResultUrl": "https://drive.google.com/file/d/1CBQfOin88OHmpzYOklKLaRhQm-rfGkaA/view?usp=drivesdk"
+        },
+        "options": {
+          "fileName": "={{ $json.name }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -96,
+        0
+      ],
+      "id": "f9815f30-bc79-4cf7-bd18-bc4f92c07a1c",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "qfEmOboilpdBnRMH",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemma-3-27b-it",
+          "mode": "list",
+          "cachedResultName": "models/gemma-3-27b-it"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Act as a strict HR Technical Recruiter. Evaluate the CV text provided.\n\nStrict Evaluation Criteria:\n\nScore 1-3: Irrelevant experience or missing 80% of required skills.\n\nScore 4-6: Junior/Intermediate with basic knowledge but lacks major projects.\n\nScore 7-8: Strong candidate with clear technical depth and impact.\n\nScore 9-10: Top 1% talent, exceptional projects, and perfect skill match.\n\nOutput strictly in JSON format: { \"name\": \"Candidate Full Name\", \"email\": \"Candidate Email\", \"score\": (Number), \"analysis\": \"Specific reason for this score in 1 sentence\" }",
+              "role": "model"
+            },
+            {
+              "content": "={{ $json.text }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        352,
+        0
+      ],
+      "id": "e2f0d12b-406d-49ed-82d9-6814e4fe3e5a",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "TvaKfCg6QBiCzDNd",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "2f62e59f-621e-8091-bfc4-dd250ab8bf3e",
+          "mode": "list",
+          "cachedResultName": "AI Recruitment Tracker",
+          "cachedResultUrl": "https://www.notion.so/2f62e59f621e8091bfc4dd250ab8bf3e"
+        },
+        "title": "={{ $json.name }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Matching Score|number",
+              "numberValue": "={{ $json.score }}"
+            },
+            {
+              "key": "AI Analysis|rich_text",
+              "textContent": "={{ $json.analysis }}"
+            },
+            {
+              "key": "CV Link|url",
+              "urlValue": "={{ $('Google Drive Trigger').item.json.webViewLink }}"
+            },
+            {
+              "key": "Status|select",
+              "selectValue": "="
+            },
+            {
+              "key": "Email|email",
+              "emailValue": "={{ $json.email }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        928,
+        0
+      ],
+      "id": "8be65553-0aa9-4aee-9088-42f72eed2476",
+      "name": "Create a database page",
+      "credentials": {
+        "notionApi": {
+          "id": "jJ5eOkzjSF6BPNxE",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. جلب النص الخام بأمان من مخرج Gemini\nconst input = items[0].json;\nlet rawText = \"\";\n\n// محاولة جلب النص من كل المسارات الممكنة اللي ظهرت في صورك\nif (input.content && input.content.parts && input.content.parts[0]) {\n    rawText = input.content.parts[0].text;\n} else if (input.message && input.message.content) {\n    rawText = input.message.content;\n} else {\n    rawText = input.text || \"\";\n}\n\n// 2. لو مفيش نص، نبعت داتا \"مراجعة\" بدل ما السيستم يضرب\nif (!rawText || rawText.trim() === \"\") {\n  return { name: \"Pending Review\", email: \"check@hr.com\", score: 0, analysis: \"AI response empty\" };\n}\n\n// 3. تنظيف النص من علامات الـ Markdown واستخراج الـ JSON الصافي\nconst cleanJsonText = rawText.replace(/```json|```/g, \"\").trim();\n\ntry {\n  // البحث عن أول \"{\" وأخر \"}\" لضمان استخراج JSON سليم\n  const start = cleanJsonText.indexOf('{');\n  const end = cleanJsonText.lastIndexOf('}') + 1;\n  const jsonOnly = cleanJsonText.substring(start, end);\n  \n  const data = JSON.parse(jsonOnly);\n  \n  return {\n    name: data.name || \"Unknown Candidate\",\n    email: data.email || \"no-email@found.com\",\n    score: parseInt(data.score) || 0,\n    analysis: data.analysis || \"Processed\"\n  };\n} catch (e) {\n  // لو الـ JSON باظ، نبعت النص الخام عشان متضيعش البيانات\n  return {\n    name: \"Format Error\",\n    email: \"manual@check.com\",\n    score: 1,\n    analysis: \"AI returned text but not valid JSON: \" + rawText.substring(0, 30)\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        0
+      ],
+      "id": "372627f8-73a2-4425-b54e-0bf633b51afe",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "simple": false,
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Status|select",
+              "selectValue": "="
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        1152,
+        0
+      ],
+      "id": "ff0fc9db-3662-4be7-9b84-8577b5432fbc",
+      "name": "Update a database page",
+      "credentials": {
+        "notionApi": {
+          "id": "jJ5eOkzjSF6BPNxE",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "event": "pagedUpdatedInDatabase",
+        "databaseId": {
+          "__rl": true,
+          "value": "2f62e59f-621e-8091-bfc4-dd250ab8bf3e",
+          "mode": "list",
+          "cachedResultName": "AI Recruitment Tracker",
+          "cachedResultUrl": "https://www.notion.so/2f62e59f621e8091bfc4dd250ab8bf3e"
+        }
+      },
+      "type": "n8n-nodes-base.notionTrigger",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        320
+      ],
+      "id": "21618849-7871-498c-81f4-4c401443effb",
+      "name": "Notion Trigger",
+      "credentials": {
+        "notionApi": {
+          "id": "jJ5eOkzjSF6BPNxE",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.Email }}",
+        "subject": "=Interview Invitation | {{ $json.Name }}",
+        "message": "=Dear {{ $json.Name }},\n\nThank you for your interest in joining our team.\n\nFollowing a preliminary review of your CV, we are pleased to inform you that you have achieved an initial matching score of {{ $json['Matching Score'] }} / 10, identifying you as a strong candidate for this role.\n\nInitial AI Assessment: \"{{ $json['AI Analysis'] }}\"\n\nWe would like to invite you for a personal interview to discuss your professional experience and skills in greater detail.\n\nPlease reply to this email with your availability for the coming week so we can schedule a convenient time.\n\nWe look forward to speaking with you soon.\n\nBest regards, The Recruitment Team",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        128,
+        224
+      ],
+      "id": "c0d2293c-c546-4ead-be5c-1ac9f603b4b0",
+      "name": "Send a message",
+      "webhookId": "4fbadcd2-d8d7-4e01-a236-6e532f4e2a42",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Xkz417KaD616UnkK",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b6790ae6-7997-42ab-8d08-494be5d2ee1f",
+              "leftValue": "={{ $json.Status }}",
+              "rightValue": "Interview",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -96,
+        320
+      ],
+      "id": "1222b35c-5f88-4759-8f14-38bc2c67b37e",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Notion Trigger').item.json.Email }}",
+        "subject": "=Application Update | {{ $json.Name }}",
+        "message": "=Dear {{ $json.Name }},\n\nThank you for your interest in joining our team and for the time you invested in your application.\n\nAfter a thorough review of your profile and the initial AI evaluation—which resulted in a matching score of {{ $('Notion Trigger').item.json['Matching Score'] }} / 10—we regret to inform you that we will not be moving forward with your candidacy at this time.\n\nPlease note that we will keep your CV in our talent database for future openings that may better align with your qualifications and experience.\n\nWe appreciate your interest in our company and wish you the very best of luck in your professional journey.\n\nSincerely, The Recruitment Team",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        128,
+        416
+      ],
+      "id": "b22ebec4-1669-49cb-898a-18efd94c1ed2",
+      "name": "Send a message1",
+      "webhookId": "4fbadcd2-d8d7-4e01-a236-6e532f4e2a42",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Xkz417KaD616UnkK",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Create a database page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a database page": {
+      "main": [
+        [
+          {
+            "node": "Update a database page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a database page": {
+      "main": [
+        []
+      ]
+    },
+    "Notion Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "23e2a013-24a9-41a1-8a69-68b39ca2f5d2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c7c848f9751b507680ea4276c0d6fa08567ec2bfa0751e75c0baea9eb317f561"
+  },
+  "id": "__Tnh2EFEKMji28Tjmk3X",
+  "tags": []
+}
